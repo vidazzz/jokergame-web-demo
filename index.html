@@ -669,7 +669,7 @@
             font-size: 18px;
         }
 
-        /* 构建阶段遮罩层 */
+        /* 揭示阶段遮罩层 */
         #build-overlay {
             position: fixed;
             top: 0;
@@ -1079,9 +1079,9 @@
     </style>
 </head>
 <body>
-    <!-- 构建阶段遮罩层 -->
+    <!-- 揭示阶段遮罩层 -->
     <div id="build-overlay">
-        <h2>构建阶段</h2>
+        <h2>揭示阶段</h2>
         <div class="gold-display">资金: <span id="gold-count">12</span></div>
 
         <!-- 牌包区域 -->
@@ -1090,16 +1090,10 @@
             <div id="packs-container" class="cards-row"></div>
         </div>
 
-        <!-- 已构建的牌 -->
+        <!-- 揭示的牌 -->
         <div class="build-section">
-            <h3>已构建的牌</h3>
-            <div id="built-cards-container" class="cards-row"></div>
-        </div>
-
-        <!-- 揭示的负分牌 -->
-        <div class="build-section">
-            <h3>揭示的负分牌</h3>
-            <div id="revealed-neg-container" class="cards-row"></div>
+            <h3>揭示的牌</h3>
+            <div id="revealed-cards-container" class="cards-row"></div>
         </div>
 
         <!-- 真相牌 -->
@@ -1291,11 +1285,9 @@
         var sourceDeck = [];          // 源头牌堆
         var positiveCandidates = [];   // 正分候选
         var negativeCandidates = [];   // 负分候选
-        var builtDeck = [];           // 已构建的正分牌堆
-        var gameDeck = [];            // 游戏使用的正分牌堆
-        var gameNegativeDeck = [];    // 游戏使用的负分牌堆
+        var gameDeck = [];            // 游戏使用的牌堆
+        var playingStage = 'negative'; // 'negative' 或 'positive'（负分牌阶段/正分牌阶段）
         var hand = [];
-        var negativeCards = [];
         var table = [];
         var selectedCards = [];
         var playedHistory = [];
@@ -1312,6 +1304,7 @@
         // 牌包系统
         var packs = [];               // 可购买的牌包
         var revealedNegCards = [];    // 揭示的负分牌
+        var revealedPosCards = [];    // 揭示的正分牌
 
         // 真相牌系统
         var truthCards = [];           // 真相牌数组
@@ -1401,7 +1394,7 @@
             card.markAttempted = true;
 
             console.log('===== 标记结果 =====');
-            console.log('牌: ' + card.rank + card.suit + ' (价值: ' + card.value + ')');
+            console.log('牌: ' + card.suit + card.value + ' (ID: ' + card.id + ')');
 
             // 每位观众按概率放置标记
             var audienceCount = config.game['观众数量'] || 3;
@@ -1432,15 +1425,16 @@
             var negCount = config.game['负分牌数'] || 6;
             var posCount = config.game['正分牌数'] || 12;
             var suitOptions = config.pack['可选花色'];
+            var cardId = 0;
 
             // 生成正分候选
             positiveCandidates = [];
             for (var i = 0; i < posCount; i++) {
                 var suit = randomItem(suitOptions);
-                var value = randomInRange(1, 10);
+                var value = randomInRange(1, 3);
                 positiveCandidates.push({
+                    id: cardId++,
                     suit: suit,
-                    rank: value.toString(),
                     value: value,
                     isRed: suit === '♥' || suit === '♦',
                     isNegative: false
@@ -1451,10 +1445,10 @@
             negativeCandidates = [];
             for (var i = 0; i < negCount; i++) {
                 var suit = randomItem(suitOptions);
-                var value = randomInRange(-10, -1);
+                var value = randomInRange(-3, -1);
                 negativeCandidates.push({
+                    id: cardId++,
                     suit: suit,
-                    rank: Math.abs(value).toString(),
                     value: value,
                     isRed: suit === '♥' || suit === '♦',
                     isNegative: true
@@ -1467,69 +1461,70 @@
         // ==================== 牌包系统 ====================
         function generatePacks() {
             packs = [];
-            var packCount = config.game['牌包数量'];
+            var suits = ['♥', '♦', '♣', '♠'];
+            var cardsPerPack = config.pack['开包张数'] || 5;
+            var pricePerCard = 2;
 
-            // 将源头牌堆（正分+负分）打乱后分配到各牌包
-            var allCards = shuffle([...positiveCandidates, ...negativeCandidates]);
-
-            // 创建空牌包
-            for (var i = 0; i < packCount; i++) {
+            // 创建4种花色牌包
+            suits.forEach(function(suit, index) {
                 packs.push({
-                    id: i,
-                    cards: [],
-                    revealedNeg: [],
-                    price: 0,
-                    opened: false
+                    id: index,
+                    suit: suit,
+                    cardsPerPack: cardsPerPack,
+                    price: cardsPerPack * pricePerCard,
+                    openedCount: 0  // 已开次数
                 });
-            }
-
-            // 随机分配每张牌到某个牌包
-            allCards.forEach(function(card) {
-                var randomPackIndex = randomInRange(0, packCount - 1);
-                if (card.isNegative) {
-                    packs[randomPackIndex].revealedNeg.push({...card});
-                } else {
-                    packs[randomPackIndex].cards.push(card);
-                }
-            });
-
-            // 计算每包价格（牌包张数 = 正分牌 + 负分牌）
-            packs.forEach(function(pack) {
-                pack.price = pack.cards.length + pack.revealedNeg.length;
             });
         }
 
         function buyPack(packId) {
             var pack = packs.find(p => p.id === packId);
-            if (!pack || pack.opened || gold < pack.price) return false;
+            if (!pack || gold < pack.price) return false;
 
             gold -= pack.price;
-            // 只有正分牌进入牌堆
-            builtDeck.push(...pack.cards);
-            // 揭示的负分牌只记录（用于标记阶段显示）
-            revealedNegCards.push(...pack.revealedNeg);
-            pack.opened = true;
+
+            // 从对应花色的源头牌堆抽取5张（一次抽5张，不放回）
+            var sourceCards = [...positiveCandidates, ...negativeCandidates];
+            var suitCards = sourceCards.filter(c => c.suit === pack.suit);
+
+            // 打乱后取前5张（不放回，不重复）
+            var shuffledSuitCards = shuffle([...suitCards]);
+            var drawnCards = shuffledSuitCards.slice(0, pack.cardsPerPack).map(c => ({...c}));
+
+            // 分离正分牌和负分牌
+            var positiveCards = drawnCards.filter(c => !c.isNegative);
+            var negativeCards = drawnCards.filter(c => c.isNegative);
+
+            // 标记所有开出的牌为揭示（正分牌和负分牌都揭示）
+            var addedPositiveCount = 0;
+            positiveCards.forEach(function(card) {
+                var alreadyRevealed = revealedPosCards.some(c => c.id === card.id);
+                if (!alreadyRevealed) {
+                    card.revealed = true;
+                    revealedPosCards.push(card);
+                    addedPositiveCount++;
+                }
+            });
+            console.log(`开包揭示${addedPositiveCount}张正分牌`);
+
+            var addedNegCount = 0;
+            negativeCards.forEach(function(card) {
+                var alreadyRevealed = revealedNegCards.some(c => c.id === card.id);
+                if (!alreadyRevealed) {
+                    card.revealed = true;
+                    revealedNegCards.push(card);
+                    addedNegCount++;
+                }
+            });
+            console.log(`开包揭示${addedNegCount}张负分牌`);
+
+            pack.openedCount++;
 
             renderBuildPhase();
             return true;
         }
 
-        function sellBuiltCard(index) {
-            var maxCards = config.game['最大牌数'] || 12;
-            if (builtDeck.length >= maxCards) return false;
-
-            var card = builtDeck[index];
-            if (!card) return false;
-
-            builtDeck.splice(index, 1);
-            gold += 1;
-
-            renderBuildPhase();
-            checkDiscoveryConditions();
-            return true;
-        }
-
-        // ==================== 构建阶段渲染 ====================
+        // ==================== 揭示阶段渲染 ====================
         function renderBuildPhase() {
             // 更新资金显示
             document.getElementById('gold-count').textContent = gold;
@@ -1537,11 +1532,8 @@
             // 渲染牌包
             renderPacks();
 
-            // 渲染已构建的牌
-            renderBuiltCards();
-
-            // 渲染揭示的负分牌
-            renderRevealedNegCards();
+            // 渲染揭示的牌（正分+负分）
+            renderRevealedCards();
 
             // 渲染真相牌
             renderTruthCardsBuild();
@@ -1551,14 +1543,38 @@
             var container = document.getElementById('packs-container');
             container.innerHTML = '';
 
+            // 统计每个花色在源头牌堆中的总牌数
+            var sourceCards = [...positiveCandidates, ...negativeCandidates];
+            var suitTotalCards = {};
+            ['♥', '♦', '♣', '♠'].forEach(s => suitTotalCards[s] = 0);
+            sourceCards.forEach(card => {
+                suitTotalCards[card.suit]++;
+            });
+
+            // 统计每个花色已揭示的牌数（正分牌在revealedPosCards中 + 负分牌在revealedNegCards中）
+            var suitRevealedCards = {};
+            ['♥', '♦', '♣', '♠'].forEach(s => suitRevealedCards[s] = 0);
+            revealedPosCards.forEach(card => {
+                suitRevealedCards[card.suit]++;
+            });
+            revealedNegCards.forEach(card => {
+                suitRevealedCards[card.suit]++;
+            });
+
             packs.forEach(pack => {
+                var totalInSuit = suitTotalCards[pack.suit];
+                var revealedInSuit = suitRevealedCards[pack.suit];
+                var allRevealed = revealedInSuit >= totalInSuit;
+                var canBuy = !allRevealed && gold >= pack.price;
+
                 var div = document.createElement('div');
-                var canBuy = !pack.opened && gold >= pack.price;
                 div.className = 'pack-card' + (canBuy ? '' : ' disabled');
                 div.innerHTML = `
+                    <div class="pack-suits">${pack.suit}</div>
                     <div class="pack-info">
                         <div>${pack.price}资金</div>
-                        <div>${pack.cards.length + pack.revealedNeg.length}张</div>
+                        <div>${pack.cardsPerPack}张</div>
+                        <div>已揭示${revealedInSuit}/${totalInSuit}</div>
                     </div>
                 `;
                 if (canBuy) {
@@ -1572,25 +1588,15 @@
             });
         }
 
-        function renderBuiltCards() {
-            var container = document.getElementById('built-cards-container');
+        function renderRevealedCards() {
+            var container = document.getElementById('revealed-cards-container');
             container.innerHTML = '';
 
-            builtDeck.forEach((card, index) => {
-                var div = createCardElement(card, () => {});
-                div.className += ' built-card';
-                div.innerHTML += '<div class="sell-btn" onclick="sellBuiltCard(' + index + ')">×</div>';
-                container.appendChild(div);
-            });
-        }
+            // 合并揭示的正分牌和负分牌
+            var allRevealed = [...revealedPosCards, ...revealedNegCards];
 
-        function renderRevealedNegCards() {
-            var container = document.getElementById('revealed-neg-container');
-            container.innerHTML = '';
-
-            revealedNegCards.forEach(card => {
+            allRevealed.forEach(card => {
                 var div = createCardElement(card, () => {});
-                div.className += ' revealed-neg-card';
                 container.appendChild(div);
             });
         }
@@ -1648,11 +1654,11 @@
         }
 
         function dealInitialHandForMark() {
-            // 标记阶段使用正分牌和揭示的负分牌
-            if (builtDeck.length === 0 && revealedNegCards.length === 0) return;
+            // 标记阶段使用揭示的正分牌和揭示的负分牌
+            if (revealedPosCards.length === 0 && revealedNegCards.length === 0) return;
 
-            // 合并正分牌和负分牌
-            hand = [...builtDeck, ...revealedNegCards];
+            // 合并揭示的正分牌和负分牌
+            hand = [...revealedPosCards, ...revealedNegCards];
         }
 
         function renderMarkPhase() {
@@ -1717,7 +1723,7 @@
 
         // ==================== 真相牌系统 ====================
         function createTruthCardFromConfig(tcConfig) {
-            var type = tcConfig['类型'] || randomInRange(1, 3);
+            var type = tcConfig['类型'] || randomItem([1, 3]); // 只使用类型1和类型3
             var truthCard = {
                 type: type,
                 description: '',
@@ -1729,10 +1735,6 @@
                 var suit = tcConfig['花色'] || randomItem(config.pack['可选花色']);
                 truthCard.suit = suit;
                 truthCard.description = suit + '翻倍';
-            } else if (type === 2) {
-                var rank = tcConfig['点数'] || randomItem(config.truthCards['随机生成']['发现条件']['点数']);
-                truthCard.rank = rank;
-                truthCard.description = rank + '翻倍';
             } else {
                 var countSuit = tcConfig['花色'] || randomItem(config.pack['可选花色']);
                 var count = tcConfig['牌数'] || randomInRange(2, 5);
@@ -1753,18 +1755,9 @@
                 var condValue = dc?.['数值'] || randomInRange(...config.truthCards['随机生成']['发现条件']['数值范围']);
                 cond.suit = condSuit;
                 cond.value = condValue;
-            } else if (condType === '持有点数') {
-                var condRank = dc?.['点数'] || randomItem(config.truthCards['随机生成']['发现条件']['点数']);
-                var condRankValue = dc?.['数值'] || randomInRange(...config.truthCards['随机生成']['发现条件']['数值范围']);
-                cond.rank = condRank;
-                cond.value = condRankValue;
-            } else if (condType === '持有牌数') {
+            } else {
+                // 持有牌数
                 cond.value = dc?.['数值'] || randomInRange(...config.truthCards['随机生成']['发现条件']['数值范围']);
-            } else if (condType === '持有特定牌') {
-                var specificRank = dc?.['点数'] || randomItem(config.truthCards['随机生成']['发现条件']['点数']);
-                var specificValue = dc?.['数值'] || randomInRange(...config.truthCards['随机生成']['发现条件']['数值范围']);
-                cond.rank = specificRank;
-                cond.value = specificValue;
             }
 
             truthCard.discoveryCondition = cond;
@@ -1792,17 +1785,18 @@
         }
 
         function checkDiscoveryConditions() {
-            // 统计已构建的牌
+            // 统计已揭示的牌
             var suitCounts = {};
-            var rankCounts = {};
-            var totalCards = builtDeck.length;
+            var totalCards = revealedPosCards.length + revealedNegCards.length;
+            var suits = ['♥', '♦', '♣', '♠'];
 
             suits.forEach(s => suitCounts[s] = 0);
-            ranks.forEach(r => rankCounts[r] = 0);
 
-            builtDeck.forEach(card => {
+            revealedPosCards.forEach(card => {
                 suitCounts[card.suit]++;
-                rankCounts[card.rank]++;
+            });
+            revealedNegCards.forEach(card => {
+                suitCounts[card.suit]++;
             });
 
             // 检查每个未发现的真相牌
@@ -1814,12 +1808,9 @@
 
                 if (cond.type === '持有花色') {
                     discovered = suitCounts[cond.suit] >= cond.value;
-                } else if (cond.type === '持有点数') {
-                    discovered = rankCounts[cond.rank] >= cond.value;
-                } else if (cond.type === '持有牌数') {
+                } else {
+                    // 持有牌数
                     discovered = totalCards >= cond.value;
-                } else if (cond.type === '持有特定牌') {
-                    discovered = rankCounts[cond.rank] >= cond.value;
                 }
 
                 if (discovered) {
@@ -1842,7 +1833,7 @@
 
         // ==================== 游戏阶段转换 ====================
         function startGamePhase() {
-            // 如果是构建阶段，先进入标记阶段
+            // 如果是揭示阶段，先进入标记阶段
             if (gamePhase === 'build') {
                 startMarkPhase();
                 return;
@@ -1854,14 +1845,25 @@
             // 隐藏标记阶段界面
             document.getElementById('mark-overlay').classList.add('hidden');
 
-            // 直接使用全部负分候选作为负分牌堆
-            // 游戏阶段从全部负分候选中抽取
-            gameNegativeDeck = shuffle([...negativeCandidates]);
+            // 重置阶段为负分牌阶段
+            playingStage = 'negative';
 
-            // 初始化游戏牌堆
-            gameDeck = shuffle([...builtDeck]);
+            // 分离负分牌堆和正分牌堆，并标记已揭示的牌和保留标记分数
+            var negativeDeck = shuffle([...negativeCandidates]).map(card => {
+                var revealedCard = revealedNegCards.find(r => r.id === card.id);
+                var isRevealed = !!revealedCard;
+                var markCount = revealedCard ? revealedCard.markCount : 0;
+                return {...card, revealed: isRevealed, markCount: markCount};
+            });
+            var positiveDeck = shuffle([...positiveCandidates]).map(card => {
+                var revealedCard = revealedPosCards.find(r => r.id === card.id);
+                var isRevealed = !!revealedCard;
+                var markCount = revealedCard ? revealedCard.markCount : 0;
+                return {...card, revealed: isRevealed, markCount: markCount};
+            });
 
-            // 清空手牌，重新发5张手牌
+            // 负分牌阶段：只从负分牌堆发5张手牌
+            gameDeck = negativeDeck;
             hand = [];
             var handSize = config.game['手牌数量'] || 5;
 
@@ -1869,15 +1871,6 @@
                 var card = gameDeck.pop();
                 card.isNew = true;
                 hand.push(card);
-            }
-
-            // 发放初始负分牌
-            var initialNeg = gameNegativeDeck.length > 0 ? gameNegativeDeck.shift() : null;
-            if (initialNeg) {
-                initialNeg.isNew = true;
-                negativeCards = [initialNeg];
-            } else {
-                negativeCards = [];
             }
 
             // 重置状态
@@ -1958,7 +1951,6 @@
             // 应用真相牌效果
             var truthMultiplier = 1;
             var truthBonus = 0;
-            var type2Rank = null; // 类型2的点数
 
             if (purchasedTruthCard) {
                 var tc = purchasedTruthCard;
@@ -1966,10 +1958,6 @@
                 if (tc.type === 1 && tc.suit === maxSuit) {
                     // 类型1：花色翻倍
                     truthMultiplier *= 2;
-                } else if (tc.type === 2) {
-                    // 类型2：特定牌翻倍
-                    type2Rank = tc.rank;
-                    // 注意：类型2在计算基础分时直接翻倍对应点数的牌
                 } else if (tc.type === 3) {
                     // 类型3：牌型加分
                     if (maxSuit === tc.suit && maxCount >= tc.count) {
@@ -1978,15 +1966,11 @@
                 }
             }
 
-            // 计算基础分（类型2在此处翻倍对应点数的牌，标记在此处加分）
+            // 计算基础分（标记在此处加分）
             var baseScore = 0;
             var cardsForDisplay = []; // 用于显示的卡片数据
             for (var i = 0; i < cards.length; i++) {
                 var cardValue = cards[i].value;
-                // 类型2：特定牌翻倍（仅翻倍基础分，不影响倍率）
-                if (type2Rank && cards[i].rank === type2Rank) {
-                    cardValue = cards[i].value * 2;
-                }
                 // 标记加分（每个标记+1分）
                 var markCount = cards[i].markCount || 0;
                 cardValue += markCount;
@@ -1999,43 +1983,21 @@
                 baseScore += cardValue;
                 // 保存显示信息
                 cardsForDisplay.push({
-                    rank: cards[i].rank,
+                    value: cardValue,
                     originalValue: cards[i].value, // 原始值
-                    value: cardValue, // 实际用于计算的值
                     markCount: markCount
                 });
             }
 
-            // 类型1会设置truthMultiplier *= 2，类型2只在基础分中翻倍
             var totalScore = (baseScore + truthBonus) * multiplier * truthMultiplier;
 
-            // 构建各牌基础分列表（类型2需要特殊显示，标记需要显示）
-            var baseValues;
-            if (type2Rank) {
-                // 类型2：显示原值×2，×2用金色
-                baseValues = cardsForDisplay.map(function(c) {
-                    var val = c.value;
-                    var parts = [];
-                    // 原始值
-                    if (c.markCount > 0) {
-                        parts.push('(<span style="color: #00bfff;">' + c.originalValue + '+' + c.markCount + '</span>)');
-                    } else {
-                        parts.push(val);
-                    }
-                    // 类型2翻倍
-                    if (c.rank === type2Rank) {
-                        parts[parts.length - 1] += '<span style="color: #ffd700;">×2</span>';
-                    }
-                    return parts.join('');
-                }).join('+');
-            } else {
-                baseValues = cardsForDisplay.map(function(c) {
-                    if (c.markCount > 0) {
-                        return '(<span style="color: #00bfff;">' + c.originalValue + '+' + c.markCount + '</span>)';
-                    }
-                    return c.value;
-                }).join('+');
-            }
+            // 构建各牌基础分列表
+            var baseValues = cardsForDisplay.map(function(c) {
+                if (c.markCount > 0) {
+                    return '(<span style="color: #00bfff;">' + c.originalValue + '+' + c.markCount + '</span>)';
+                }
+                return c.value;
+            }).join('+');
 
             // 构建消息：考虑真相牌效果
             var truthEffect = '';
@@ -2044,13 +2006,13 @@
                 truthEffect = '<span style="color: #ffd700;">+' + truthBonus + '</span>';
             }
 
-            // 基础倍率（类型2的翻倍已在baseScore中体现，不需要额外显示）
+            // 基础倍率
             var baseMultiplier = multiplier;
 
             // 消息格式：基础分×倍率[×真相牌倍率]=总分
             var multiplierPart = '×' + baseMultiplier;
-            if (truthMultiplier > 1 && !type2Rank) {
-                // 真相牌翻倍效果用金色显示（类型2在牌值显示中已体现）
+            if (truthMultiplier > 1) {
+                // 真相牌翻倍效果用金色显示
                 multiplierPart += '<span style="color: #ffd700;">×' + truthMultiplier + '</span>';
             }
 
@@ -2065,8 +2027,8 @@
 
         // 自动选择最佳出牌策略
         function autoSelectBestCards() {
-            // 合并手牌和负分牌
-            var allCards = [...hand, ...negativeCards];
+            // 使用手牌，但排除未揭示的牌（推荐策略不对未揭示的牌计算）
+            var allCards = [...hand].filter(c => c.revealed === true);
             if (allCards.length === 0) return;
 
             var suits = ['♥', '♦', '♣', '♠'];
@@ -2108,7 +2070,7 @@
         }
 
         // 创建卡片元素
-        function createCardElement(card, onClick) {
+        function createCardElement(card, onClick, forceShowValue) {
             const div = document.createElement('div');
             let className = '';
             if (card.isNegative) {
@@ -2119,15 +2081,23 @@
             if (card.isNew) className += ' animate';
             div.className = `card ${className}`;
 
+            // 未被揭示的牌隐藏分数，但forceShowValue可以强制显示
+            var isRevealed = card.revealed === true || forceShowValue;
+
             // 牌面显示数值
-            // 负分牌如果有标记，显示有效值（不低于0）
-            let displayValue = card.value;
-            if (card.isNegative && card.markCount && card.markCount > 0) {
-                displayValue = Math.min(0, card.value + card.markCount);
+            let displayValue;
+            if (isRevealed) {
+                // 负分牌如果有标记，显示有效值（不低于0）
+                displayValue = card.value;
+                if (card.isNegative && card.markCount && card.markCount > 0) {
+                    displayValue = Math.min(0, card.value + card.markCount);
+                }
+            } else {
+                displayValue = '?';
             }
 
-            // 标记加分显示
-            const markBonus = card.markCount && card.markCount > 0 ? `+${card.markCount}` : '';
+            // 标记加分显示（仅对已揭示的牌）
+            const markBonus = isRevealed && card.markCount && card.markCount > 0 ? `+${card.markCount}` : '';
 
             div.innerHTML = `
                 <div class="suit">${card.suit}</div>
@@ -2142,12 +2112,11 @@
         function clearNewFlags() {
             hand.forEach(c => c.isNew = false);
             table.forEach(c => c.isNew = false);
-            negativeCards.forEach(c => c.isNew = false);
         }
 
         // 渲染真相牌（已废弃，保留兼容）
         function renderTruthCards() {
-            // 真相牌现在在构建阶段和信息栏中显示
+            // 真相牌现在在揭示阶段和信息栏中显示
         }
 
         // 渲染真相牌抽取界面（已废弃，保留兼容）
@@ -2191,23 +2160,6 @@
             renderHand();
         }
 
-        // 切换负分牌选择
-        function toggleNegativeSelect(card) {
-            const index = selectedCards.findIndex(c => c.suit === card.suit && c.rank === card.rank && c.value === card.value);
-            if (index >= 0) {
-                selectedCards.splice(index, 1);
-            } else {
-                const maxCards = config.game['出牌最大张数'] || 5;
-                if (selectedCards.length >= maxCards) {
-                    showMessage('最多只能选择' + maxCards + '张牌', 'warning');
-                    return;
-                }
-                selectedCards.push(card);
-            }
-            renderHand();
-            updatePreview();
-        }
-
         // 渲染手牌（合并负分牌）
         function renderHand() {
             const handRow = document.getElementById('hand-row');
@@ -2222,33 +2174,11 @@
 
             // 渲染正常手牌
             hand.forEach(card => {
-                const isSelected = selectedCards.some(c => c.suit === card.suit && c.rank === card.rank);
+                const isSelected = selectedCards.some(c => c.id === card.id);
                 const div = createCardElement(card, () => toggleSelect(card));
                 if (isSelected) div.classList.add('selected');
                 contentDiv.appendChild(div);
             });
-
-            // 如果有负分牌，添加分隔线和负分牌
-            if (negativeCards.length > 0) {
-                // 分隔线
-                const divider = document.createElement('div');
-                divider.className = 'negative-divider';
-                contentDiv.appendChild(divider);
-
-                // 负分牌容器
-                const negSection = document.createElement('div');
-                negSection.className = 'negative-section';
-                negSection.title = '负分牌（点击选中，可与手牌一同打出）';
-
-                negativeCards.forEach(card => {
-                    const isSelected = selectedCards.some(c => c.suit === card.suit && c.rank === card.rank && c.value === card.value);
-                    const div = createCardElement(card, () => toggleNegativeSelect(card));
-                    if (isSelected) div.classList.add('selected');
-                    negSection.appendChild(div);
-                });
-
-                contentDiv.appendChild(negSection);
-            }
 
             handRow.appendChild(contentDiv);
 
@@ -2296,9 +2226,9 @@
                 roundDiv.innerHTML = `第${round.round}轮 <span class="round-score">+${round.score}</span>`;
                 roundContainer.appendChild(roundDiv);
 
-                // 该轮的牌
+                // 该轮的牌（打出时显示真实分数）
                 round.cards.forEach(card => {
-                    const div = createCardElement(card, () => {});
+                    const div = createCardElement(card, () => {}, true);
                     roundContainer.appendChild(div);
                 });
 
@@ -2311,7 +2241,7 @@
 
         // 切换选择
         function toggleSelect(card) {
-            const index = selectedCards.findIndex(c => c.suit === card.suit && c.rank === card.rank);
+            const index = selectedCards.findIndex(c => c.id === card.id);
             if (index >= 0) {
                 selectedCards.splice(index, 1);
             } else {
@@ -2370,18 +2300,9 @@
 
             // 从手牌中移除
             selectedCards.forEach(selected => {
-                const index = hand.findIndex(c => c.suit === selected.suit && c.rank === selected.rank);
+                const index = hand.findIndex(c => c.id === selected.id);
                 if (index >= 0) {
                     hand.splice(index, 1);
-                }
-            });
-
-            // 从负分牌数组中移除已选中的负分牌
-            const negativeSelectedCards = selectedCards.filter(c => c.isNegative);
-            negativeSelectedCards.forEach(selected => {
-                const nIndex = negativeCards.findIndex(nc => nc.suit === selected.suit && nc.rank === selected.rank && nc.value === selected.value);
-                if (nIndex >= 0) {
-                    negativeCards.splice(nIndex, 1);
                 }
             });
 
@@ -2397,59 +2318,87 @@
             // 出牌次数减1
             playsRemaining--;
 
-            // 检查是否达到出牌次数上限（游戏结束）
-            if (playsRemaining === 0) {
-                gameOver = true;
-                // 游戏结束，进入结束阶段
-                // 隐藏手牌
-                document.getElementById('hand-row').style.display = 'none';
-                // 渲染桌面（显示所有历史出牌）
-                renderTable();
-                // 更新分数显示
-                updateUI();
+            // 渲染桌面（显示历史出牌）
+            renderTable();
 
-                // 只显示重新开始按钮
-                document.getElementById('action-buttons').style.display = 'flex';
-                // 隐藏"打出选中的牌"和"取消选择"按钮，只留"重新开始"
-                var btns = document.querySelectorAll('#action-buttons button');
-                if (btns.length >= 3) {
-                    btns[0].style.display = 'none'; // 打出选中的牌
-                    btns[1].style.display = 'none'; // 取消选择
-                }
-                // 检查负分牌是否已全部打出（negativeCards数组为空）
-                if (negativeCards.length === 0) {
-                    showMessage(`挑战成功！最终得分: ${currentScore}`, 'success');
+            // 处理阶段切换和抽牌
+            if (playingStage === 'negative') {
+                // 负分牌阶段：检查是否打完所有负分牌
+                var hasNegativeInHand = hand.some(c => c.isNegative);
+                var hasNegativeInDeck = gameDeck.some(c => c.isNegative);
+
+                if (!hasNegativeInHand && !hasNegativeInDeck) {
+                    // 负分牌全部打完，切换到正分牌阶段
+                    playingStage = 'positive';
+                    gameDeck = shuffle([...positiveCandidates]).map(card => {
+                        var revealedCard = revealedPosCards.find(r => r.id === card.id);
+                        var isRevealed = !!revealedCard;
+                        var markCount = revealedCard ? revealedCard.markCount : 0;
+                        return {...card, revealed: isRevealed, markCount: markCount};
+                    });
+
+                    // 从正分牌堆发5张手牌
+                    hand = [];
+                    var handSize = config.game['手牌数量'] || 5;
+                    for (var i = 0; i < handSize && gameDeck.length > 0; i++) {
+                        var card = gameDeck.pop();
+                        card.isNew = true;
+                        hand.push(card);
+                    }
+                    showMessage('负分牌已全部打出，进入正分牌阶段！', 'success');
                 } else {
-                    showMessage(`挑战失败！负分牌未打出，最终得分: ${currentScore}`, 'warning');
-                }
-            } else {
-                // 还有出牌次数，继续游戏
-                // 渲染桌面（显示历史出牌）
-                renderTable();
-                // 还有出牌次数，继续游戏
-                // 自动抽牌到手牌满配置数量
-                while (hand.length < config.game['手牌数量'] && gameDeck.length > 0) {
-                    var card = gameDeck.pop();
-                    card.isNew = true;
-                    hand.push(card);
-                }
-
-                // 抽取配置数量的负分牌
-                var negDrawCount = config.game['每次抽负分牌数量'] || 1;
-                for (var i = 0; i < negDrawCount; i++) {
-                    if (gameNegativeDeck.length > 0) {
-                        var newNeg = gameNegativeDeck.shift();
-                        newNeg.isNew = true;
-                        negativeCards.push(newNeg);
+                    // 继续从负分牌堆抽牌
+                    var handSize = config.game['手牌数量'] || 5;
+                    while (hand.length < handSize && gameDeck.length > 0) {
+                        var card = gameDeck.pop();
+                        card.isNew = true;
+                        hand.push(card);
                     }
                 }
+            } else {
+                // 正分牌阶段：检查是否达到出牌次数上限（游戏结束）
+                if (playsRemaining === 0) {
+                    gameOver = true;
+                    // 游戏结束，进入结束阶段
+                    // 隐藏手牌
+                    document.getElementById('hand-row').style.display = 'none';
+                    // 渲染桌面（显示所有历史出牌）
+                    renderTable();
+                    // 更新分数显示
+                    updateUI();
 
-                // 更新UI并自动选择最佳策略
-                renderHand();
-                renderTable();
-                updateUI();
-                autoSelectBestCards();
+                    // 只显示重新开始按钮
+                    document.getElementById('action-buttons').style.display = 'flex';
+                    // 隐藏"打出选中的牌"和"取消选择"按钮，只留"重新开始"
+                    var btns = document.querySelectorAll('#action-buttons button');
+                    if (btns.length >= 3) {
+                        btns[0].style.display = 'none'; // 打出选中的牌
+                        btns[1].style.display = 'none'; // 取消选择
+                    }
+                    // 游戏结束，显示总分
+                    var totalScore = playedHistory.reduce((sum, round) => sum + round.score, 0);
+                    showMessage(`游戏结束！总分: ${totalScore}`, 'success');
+                    renderHand();
+                    renderTable();
+                    updateUI();
+                    autoSelectBestCards();
+                    return;
+                } else {
+                    // 继续从正分牌堆抽牌
+                    var handSize = config.game['手牌数量'] || 5;
+                    while (hand.length < handSize && gameDeck.length > 0) {
+                        var card = gameDeck.pop();
+                        card.isNew = true;
+                        hand.push(card);
+                    }
+                }
             }
+
+            // 更新UI并自动选择最佳策略
+            renderHand();
+            renderTable();
+            updateUI();
+            autoSelectBestCards();
         }
 
         // 摸牌
@@ -2519,11 +2468,11 @@
             // 确保配置已加载
             await loadConfig();
 
-            // 初始化构建阶段
+            // 初始化揭示阶段
             gamePhase = 'build';
             gold = config.game['初始资金'];
-            builtDeck = [];
             revealedNegCards = [];
+            revealedPosCards = [];
             purchasedTruthCard = null;
 
             // 初始化源头牌堆
@@ -2537,7 +2486,6 @@
 
             // 重置游戏状态
             hand = [];
-            negativeCards = [];
             table = [];
             selectedCards = [];
             playedHistory = [];
@@ -2546,7 +2494,7 @@
             markedCards = [];
             suitProbabilities = {};
 
-            // 显示构建阶段
+            // 显示揭示阶段
             document.getElementById('build-overlay').classList.remove('hidden');
             document.getElementById('mark-overlay').classList.add('hidden');
             document.getElementById('truth-overlay').style.display = 'none';
@@ -2556,7 +2504,7 @@
             document.getElementById('hand-row').style.display = 'none';
             document.getElementById('action-buttons').style.display = 'none';
 
-            // 渲染构建阶段
+            // 渲染揭示阶段
             renderBuildPhase();
         }
 
