@@ -202,6 +202,7 @@
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
             user-select: none;
             flex-shrink: 0;
+            background: linear-gradient(145deg, #888, #666);
         }
 
         .card:hover {
@@ -1833,14 +1834,19 @@
 
         // ==================== 游戏阶段转换 ====================
         function startGamePhase() {
-            // 如果是揭示阶段，先进入标记阶段
+            // 如果是揭示阶段，根据配置决定是否进入标记阶段
             if (gamePhase === 'build') {
-                startMarkPhase();
-                return;
+                var skipMark = config.game['跳过标记阶段'] !== false;
+                if (!skipMark) {
+                    startMarkPhase();
+                    return;
+                }
+                // 跳过标记阶段，直接进入游戏阶段
+                gamePhase = 'playing';
+            } else {
+                // 从标记阶段进入游戏阶段
+                gamePhase = 'playing';
             }
-
-            // 从标记阶段进入游戏阶段
-            gamePhase = 'playing';
 
             // 隐藏标记阶段界面
             document.getElementById('mark-overlay').classList.add('hidden');
@@ -1915,11 +1921,19 @@
 
         // 获取翻倍倍数
         function getMultiplier(count) {
-            if (count >= 5) return 16;
-            if (count >= 4) return 8;
-            if (count >= 3) return 4;
-            if (count >= 2) return 2;
-            return 1;
+            var multiplierConfig = config.game['同花倍率'] || {
+                "1": 1,
+                "2": 2,
+                "3": 4,
+                "4": 8,
+                "5": 16
+            };
+            // 从配置中查找对应的倍率
+            if (count >= 5 && multiplierConfig["5"]) return multiplierConfig["5"];
+            if (count >= 4 && multiplierConfig["4"]) return multiplierConfig["4"];
+            if (count >= 3 && multiplierConfig["3"]) return multiplierConfig["3"];
+            if (count >= 2 && multiplierConfig["2"]) return multiplierConfig["2"];
+            return multiplierConfig["1"] || 1;
         }
 
         // 计算得分
@@ -2072,35 +2086,34 @@
         // 创建卡片元素
         function createCardElement(card, onClick, forceShowValue) {
             const div = document.createElement('div');
+
+            // 未被揭示的牌隐藏花色和颜色，但forceShowValue可以强制显示
+            var isRevealed = card.revealed === true || forceShowValue;
+
             let className = '';
-            if (card.isNegative) {
-                className = 'negative';
-            } else {
-                className = card.isRed ? 'red' : 'black';
+            if (isRevealed) {
+                if (card.isNegative) {
+                    className = 'negative';
+                } else {
+                    className = card.isRed ? 'red' : 'black';
+                }
             }
             if (card.isNew) className += ' animate';
             div.className = `card ${className}`;
 
-            // 未被揭示的牌隐藏分数，但forceShowValue可以强制显示
-            var isRevealed = card.revealed === true || forceShowValue;
-
-            // 牌面显示数值
-            let displayValue;
-            if (isRevealed) {
-                // 负分牌如果有标记，显示有效值（不低于0）
-                displayValue = card.value;
-                if (card.isNegative && card.markCount && card.markCount > 0) {
-                    displayValue = Math.min(0, card.value + card.markCount);
-                }
-            } else {
-                displayValue = '?';
+            // 花色显示
+            let displaySuit = isRevealed ? card.suit : '?';
+            // 分数始终显示
+            let displayValue = card.value;
+            if (card.isNegative && card.markCount && card.markCount > 0) {
+                displayValue = Math.min(0, card.value + card.markCount);
             }
 
-            // 标记加分显示（仅对已揭示的牌）
-            const markBonus = isRevealed && card.markCount && card.markCount > 0 ? `+${card.markCount}` : '';
+            // 标记加分显示
+            const markBonus = card.markCount && card.markCount > 0 ? `+${card.markCount}` : '';
 
             div.innerHTML = `
-                <div class="suit">${card.suit}</div>
+                <div class="suit">${displaySuit}</div>
                 <div class="rank">${displayValue}<span class="mark-bonus">${markBonus}</span></div>
             `;
 
