@@ -59,20 +59,43 @@
 
         /* 真相牌在信息栏中的样式 */
         #truth-card-display {
-            background: linear-gradient(145deg, #ffd700, #b8860b);
-            color: #333;
-            border: 2px solid #ff6600;
+            background: linear-gradient(145deg, #1a1a2a, #0a0a1a);
+            border: 3px solid #00ffff;
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.4);
+            color: #00ffff;
         }
 
         #truth-card-display .truth-label {
             font-size: 12px;
-            color: #8b0000;
+            color: #00aaaa;
             display: block;
         }
 
         #truth-card-display .truth-effect {
             font-weight: bold;
             font-size: 14px;
+            color: #00ffff;
+        }
+
+        .truth-info {
+            background: linear-gradient(145deg, #2a2a2a, #1a1a1a);
+            border: 3px solid #00ffff;
+            border-radius: 10px;
+            padding: 15px 25px;
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.4);
+            color: #00ffff;
+            font-size: 16px;
+        }
+
+        .truth-info .truth-label {
+            color: #aaa;
+            margin-right: 8px;
+        }
+
+        /* 真相条件牌外框 */
+        .truth-condition-card {
+            border: 3px solid #00ffff !important;
+            box-shadow: 0 0 15px rgba(0, 255, 255, 0.5);
         }
 
         .suit-count {
@@ -1097,10 +1120,10 @@
             <div id="revealed-cards-container" class="cards-row"></div>
         </div>
 
-        <!-- 真相牌 -->
+        <!-- 真相条件牌 -->
         <div class="build-section">
-            <h3>真相牌</h3>
-            <div id="truth-cards-build-container" class="cards-row"></div>
+            <h3>真相条件牌 <span id="truth-reveal-status"></span></h3>
+            <div id="truth-condition-container" class="cards-row"></div>
         </div>
 
         <button class="btn-primary continue-btn" onclick="startGamePhase()">开始游戏</button>
@@ -1119,19 +1142,6 @@
         </div>
 
         <button class="btn-primary continue-btn" onclick="startGamePhase()">开始游戏</button>
-    </div>
-
-    <!-- 真相牌抽取遮罩层（旧版本，保留兼容） -->
-    <div id="truth-overlay" style="display: none;">
-        <h2>点击抽取真相牌</h2>
-        <div id="truth-cards-container"></div>
-        <div id="truth-result" style="display: none;">
-            <div class="card truth selected">
-                <div class="rank" id="truth-effect" style="font-size: 18px;"></div>
-            </div>
-            <div class="effect-name" id="truth-effect-name"></div>
-            <button class="btn-primary continue-btn" onclick="startGamePhase()">开始游戏</button>
-        </div>
     </div>
 
     <!-- 左侧边栏 -->
@@ -1202,18 +1212,6 @@
             pack: {
                 '可选花色': ['♥', '♦', '♣', '♠'],
                 '张数范围': [1, 5]
-            },
-            truthCards: {
-                '配置列表': [],
-                '随机生成': {
-                    '发现条件': {
-                        '类型列表': ['持有花色', '持有点数', '持有牌数', '持有特定牌'],
-                        '数值范围': [2, 5],
-                        '花色': ['♥', '♦', '♣', '♠'],
-                        '点数': ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K']
-                    },
-                    '价格范围': [2, 5]
-                }
             }
         };
 
@@ -1235,7 +1233,6 @@
                 if (loaded) {
                     if (loaded.game) config.game = { ...config.game, ...loaded.game };
                     if (loaded.pack) config.pack = { ...config.pack, ...loaded.pack };
-                    if (loaded.truthCards) config.truthCards = { ...config.truthCards, ...loaded.truthCards };
                 }
             } catch (e) {
                 console.log('无法加载config.json，使用默认配置');
@@ -1305,10 +1302,8 @@
         var packs = [];               // 可购买的牌包
         var revealedNegCards = [];    // 揭示的负分牌
         var revealedPosCards = [];    // 揭示的正分牌
-
-        // 真相牌系统
-        var truthCards = [];           // 真相牌数组
-        var purchasedTruthCard = null; // 已购买的真相牌
+        var truthConditionCards = []; // 真相条件牌（随机抽取的5张牌）
+        var truthRevealed = false;     // 真相牌是否已揭示
 
         // 花色和点数
         const suits = ['♥', '♦', '♣', '♠'];
@@ -1518,6 +1513,20 @@
             });
             console.log(`开包揭示${addedNegCount}张负分牌`);
 
+            // 检查是否揭示了所有真相条件牌
+            if (!truthRevealed) {
+                var revealedConditionCount = 0;
+                truthConditionCards.forEach(function(tc) {
+                    if (revealedPosCards.some(c => c.id === tc.id)) {
+                        revealedConditionCount++;
+                    }
+                });
+                if (revealedConditionCount >= 5) {
+                    truthRevealed = true;
+                    console.log('真相牌已揭示！');
+                }
+            }
+
             pack.openedCount++;
 
             renderBuildPhase();
@@ -1535,8 +1544,8 @@
             // 渲染揭示的牌（正分+负分）
             renderRevealedCards();
 
-            // 渲染真相牌
-            renderTruthCardsBuild();
+            // 渲染真相条件牌
+            renderTruthConditionCards();
         }
 
         function renderPacks() {
@@ -1579,9 +1588,7 @@
                 `;
                 if (canBuy) {
                     div.onclick = () => {
-                        if (buyPack(pack.id)) {
-                            checkDiscoveryConditions();
-                        }
+                        buyPack(pack.id);
                     };
                 }
                 container.appendChild(div);
@@ -1597,40 +1604,48 @@
 
             allRevealed.forEach(card => {
                 var div = createCardElement(card, () => {});
+                // 检查是否是真相条件牌
+                var isTruthCondition = truthConditionCards.some(tc => tc.id === card.id);
+                if (isTruthCondition) {
+                    div.classList.add('truth-condition-card');
+                }
                 container.appendChild(div);
             });
         }
 
-        function renderTruthCardsBuild() {
-            var container = document.getElementById('truth-cards-build-container');
+        // 渲染真相条件牌
+        function renderTruthConditionCards() {
+            var container = document.getElementById('truth-condition-container');
+            var statusEl = document.getElementById('truth-reveal-status');
             container.innerHTML = '';
 
-            truthCards.forEach((tc, index) => {
-                var div = document.createElement('div');
-
-                if (tc.state === 'undiscovered') {
-                    div.className = 'truth-card-back-small locked';
-                    div.innerHTML = '<span class="mark">?</span>';
-                } else if (tc.state === 'discovered') {
-                    div.className = 'truth-card-back-small';
-                    div.innerHTML = '<span class="mark">?</span>';
-                    var canBuy = gold >= tc.price;
-                    if (!canBuy) {
-                        div.className += ' disabled';
-                    } else {
-                        div.onclick = () => {
-                            if (buyTruthCard(index)) {
-                                // 购买成功
-                            }
-                        };
-                    }
-                } else if (tc.state === 'purchased') {
-                    div.className = 'truth-card-back-small purchased';
-                    div.innerHTML = '<span style="color: #8b0000; font-size: 12px; text-align: center;">' + tc.description + '</span>';
+            // 检查已揭示的条件牌数量
+            var revealedCount = 0;
+            truthConditionCards.forEach(function(tc) {
+                if (revealedPosCards.some(c => c.id === tc.id)) {
+                    revealedCount++;
                 }
-
-                container.appendChild(div);
             });
+
+            // 更新状态显示
+            statusEl.textContent = '(' + revealedCount + '/5)';
+
+            // 渲染真相牌（盖牌状态或已揭示）
+            // 如果真相已揭示，显示所有条件；否则显示盖牌
+            if (truthRevealed) {
+                // 真相已揭示，显示条件信息
+                var conditionStr = truthConditionCards.map(c => c.suit + c.value).join(', ');
+                var infoDiv = document.createElement('div');
+                infoDiv.className = 'truth-info';
+                infoDiv.innerHTML = '<span class="truth-label">真相条件: </span><span class="truth-effect">' + conditionStr + '</span>';
+                container.appendChild(infoDiv);
+            } else {
+                // 显示文案
+                var infoDiv = document.createElement('div');
+                infoDiv.className = 'truth-info';
+                infoDiv.innerHTML = '<span class="truth-label">真相尚未揭示</span>';
+                container.appendChild(infoDiv);
+            }
         }
 
         // ==================== 标记阶段 ====================
@@ -1721,116 +1736,6 @@
             document.getElementById('mark-gold-count').textContent = gold;
         }
 
-        // ==================== 真相牌系统 ====================
-        function createTruthCardFromConfig(tcConfig) {
-            var type = tcConfig['类型'] || randomItem([1, 3]); // 只使用类型1和类型3
-            var truthCard = {
-                type: type,
-                description: '',
-                state: 'undiscovered' // undiscovered/discovered/purchased
-            };
-
-            // 效果属性
-            if (type === 1) {
-                var suit = tcConfig['花色'] || randomItem(config.pack['可选花色']);
-                truthCard.suit = suit;
-                truthCard.description = suit + '翻倍';
-            } else {
-                var countSuit = tcConfig['花色'] || randomItem(config.pack['可选花色']);
-                var count = tcConfig['牌数'] || randomInRange(2, 5);
-                var extraValue = tcConfig['加分'] || randomInRange(2, 5) * 10;
-                truthCard.suit = countSuit;
-                truthCard.count = count;
-                truthCard.extraValue = extraValue;
-                truthCard.description = count + '张' + countSuit + ' +' + extraValue + '分';
-            }
-
-            // 发现条件
-            var dc = tcConfig['发现条件'];
-            var condType = dc?.['类型'] || randomItem(config.truthCards['随机生成']['发现条件']['类型列表']);
-            var cond = { type: condType };
-
-            if (condType === '持有花色') {
-                var condSuit = dc?.['花色'] || randomItem(config.pack['可选花色']);
-                var condValue = dc?.['数值'] || randomInRange(...config.truthCards['随机生成']['发现条件']['数值范围']);
-                cond.suit = condSuit;
-                cond.value = condValue;
-            } else {
-                // 持有牌数
-                cond.value = dc?.['数值'] || randomInRange(...config.truthCards['随机生成']['发现条件']['数值范围']);
-            }
-
-            truthCard.discoveryCondition = cond;
-            truthCard.price = tcConfig['价格'] || randomInRange(...config.truthCards['随机生成']['价格范围']);
-
-            return truthCard;
-        }
-
-        function generateTruthCards() {
-            truthCards = [];
-            var totalCount = config.game['真相牌数量'];
-            var configList = config.truthCards['配置列表'] || [];
-
-            // 先添加配置的真相牌
-            for (var i = 0; i < configList.length; i++) {
-                truthCards.push(createTruthCardFromConfig(configList[i]));
-            }
-
-            // 补齐随机生成的真相牌
-            while (truthCards.length < totalCount) {
-                truthCards.push(createTruthCardFromConfig({}));
-            }
-
-            return truthCards;
-        }
-
-        function checkDiscoveryConditions() {
-            // 统计已揭示的牌
-            var suitCounts = {};
-            var totalCards = revealedPosCards.length + revealedNegCards.length;
-            var suits = ['♥', '♦', '♣', '♠'];
-
-            suits.forEach(s => suitCounts[s] = 0);
-
-            revealedPosCards.forEach(card => {
-                suitCounts[card.suit]++;
-            });
-            revealedNegCards.forEach(card => {
-                suitCounts[card.suit]++;
-            });
-
-            // 检查每个未发现的真相牌
-            truthCards.forEach(tc => {
-                if (tc.state !== 'undiscovered') return;
-
-                var cond = tc.discoveryCondition;
-                var discovered = false;
-
-                if (cond.type === '持有花色') {
-                    discovered = suitCounts[cond.suit] >= cond.value;
-                } else {
-                    // 持有牌数
-                    discovered = totalCards >= cond.value;
-                }
-
-                if (discovered) {
-                    tc.state = 'discovered';
-                }
-            });
-        }
-
-        function buyTruthCard(tcIndex) {
-            var tc = truthCards[tcIndex];
-            if (!tc || tc.state !== 'discovered' || gold < tc.price) return false;
-
-            gold -= tc.price;
-            tc.state = 'purchased';
-            purchasedTruthCard = tc;
-
-            renderBuildPhase();
-            return true;
-        }
-
         // ==================== 游戏阶段转换 ====================
         function startGamePhase() {
             // 如果是揭示阶段，根据配置决定是否进入标记阶段
@@ -1887,7 +1792,6 @@
 
             // 更新UI
             document.getElementById('build-overlay').classList.add('hidden');
-            document.getElementById('truth-overlay').classList.add('hidden');
             document.getElementById('table-row').style.display = 'flex';
             document.getElementById('hand-row').style.display = 'flex';
             document.getElementById('action-buttons').style.display = 'flex';
@@ -1903,9 +1807,10 @@
             // 显示真相牌
             var truthDisplay = document.getElementById('truth-card-display');
             var truthText = document.getElementById('truth-card-text');
-            if (purchasedTruthCard) {
+            if (truthRevealed) {
                 truthDisplay.style.display = 'block';
-                truthText.innerHTML = '<span class="truth-label">真相牌</span><span class="truth-effect">' + purchasedTruthCard.description + '</span>';
+                var conditionStr = truthConditionCards.map(c => c.suit + c.value).join(', ');
+                truthText.innerHTML = '<span class="truth-label">真相条件</span><span class="truth-effect">' + conditionStr + '</span>';
             }
 
             // 更新UI
@@ -1965,17 +1870,18 @@
             var truthMultiplier = 1;
             var truthBonus = 0;
 
-            if (purchasedTruthCard) {
-                var tc = purchasedTruthCard;
-
-                if (tc.type === 1 && tc.suit === maxSuit) {
-                    // 类型1：花色翻倍
-                    truthMultiplier *= 2;
-                } else if (tc.type === 3) {
-                    // 类型3：牌型加分
-                    if (maxSuit === tc.suit && maxCount >= tc.count) {
-                        truthBonus += tc.extraValue;
+            // 真相条件牌加分（3张+50，4张+100，5张+200）
+            if (truthRevealed) {
+                var conditionCardsInPlay = 0;
+                truthConditionCards.forEach(function(tc) {
+                    if (cards.some(c => c.id === tc.id)) {
+                        conditionCardsInPlay++;
                     }
+                });
+                if (conditionCardsInPlay >= 3) {
+                    if (conditionCardsInPlay === 3) truthBonus += 50;
+                    else if (conditionCardsInPlay === 4) truthBonus += 100;
+                    else if (conditionCardsInPlay === 5) truthBonus += 200;
                 }
             }
 
@@ -2126,47 +2032,6 @@
             table.forEach(c => c.isNew = false);
         }
 
-        // 渲染真相牌（已废弃，保留兼容）
-        function renderTruthCards() {
-            // 真相牌现在在揭示阶段和信息栏中显示
-        }
-
-        // 渲染真相牌抽取界面（已废弃，保留兼容）
-        function renderTruthDeck() {
-            var container = document.getElementById('truth-cards-container');
-            container.innerHTML = '';
-            container.style.display = 'flex';
-
-            // 隐藏结果区域
-            document.getElementById('truth-result').style.display = 'none';
-
-            // 渲染盖牌
-            truthCards.forEach(function(card, index) {
-                var cardDiv = document.createElement('div');
-                cardDiv.className = 'truth-card-back';
-                cardDiv.innerHTML = '<span class="mark">?</span>';
-                cardDiv.onclick = function() {
-                    revealTruthCard(index);
-                };
-                container.appendChild(cardDiv);
-            });
-        }
-
-        // 翻开真相牌
-        function revealTruthCard(index) {
-            var card = truthCards[index];
-            purchasedTruthCard = card;
-
-            var container = document.getElementById('truth-cards-container');
-            container.style.display = 'none';
-
-            // 显示结果
-            var resultDiv = document.getElementById('truth-result');
-            resultDiv.style.display = 'flex';
-            document.getElementById('truth-effect').textContent = card.description;
-            document.getElementById('truth-effect-name').textContent = card.description;
-        }
-
         // 渲染负分牌（合并到renderHand中，此函数保留兼容）
         function renderNegativeCard() {
             renderHand();
@@ -2189,6 +2054,13 @@
                 const isSelected = selectedCards.some(c => c.id === card.id);
                 const div = createCardElement(card, () => toggleSelect(card));
                 if (isSelected) div.classList.add('selected');
+                // 检查是否是真相条件牌
+                if (truthRevealed) {
+                    var isTruthCondition = truthConditionCards.some(tc => tc.id === card.id);
+                    if (isTruthCondition) {
+                        div.classList.add('truth-condition-card');
+                    }
+                }
                 contentDiv.appendChild(div);
             });
 
@@ -2205,6 +2077,13 @@
         function updateButtons() {
             const btnClear = document.getElementById('btn-clear');
             const btnSuggest = document.getElementById('btn-suggest');
+
+            // 游戏结束时隐藏所有操作按钮
+            if (gameOver) {
+                btnClear.style.display = 'none';
+                btnSuggest.style.display = 'none';
+                return;
+            }
 
             if (selectedCards.length === 0) {
                 btnClear.style.display = 'none';
@@ -2241,6 +2120,13 @@
                 // 该轮的牌（打出时显示真实分数）
                 round.cards.forEach(card => {
                     const div = createCardElement(card, () => {}, true);
+                    // 检查是否是真相条件牌
+                    if (truthRevealed) {
+                        var isTruthCondition = truthConditionCards.some(tc => tc.id === card.id);
+                        if (isTruthCondition) {
+                            div.classList.add('truth-condition-card');
+                        }
+                    }
                     roundContainer.appendChild(div);
                 });
 
@@ -2386,6 +2272,7 @@
                     if (btns.length >= 3) {
                         btns[0].style.display = 'none'; // 打出选中的牌
                         btns[1].style.display = 'none'; // 取消选择
+                        btns[2].style.display = 'none'; // 推荐出牌
                     }
                     // 游戏结束，显示总分
                     var totalScore = playedHistory.reduce((sum, round) => sum + round.score, 0);
@@ -2393,7 +2280,6 @@
                     renderHand();
                     renderTable();
                     updateUI();
-                    autoSelectBestCards();
                     return;
                 } else {
                     // 继续从正分牌堆抽牌
@@ -2485,16 +2371,17 @@
             gold = config.game['初始资金'];
             revealedNegCards = [];
             revealedPosCards = [];
-            purchasedTruthCard = null;
+            truthRevealed = false;
 
             // 初始化源头牌堆
             initSourceDeck();
 
+            // 生成真相条件牌（从正分候选中随机抽取5张）
+            truthConditionCards = shuffle([...positiveCandidates]).slice(0, 5);
+            console.log('真相条件牌:', truthConditionCards.map(c => c.suit + c.value));
+
             // 生成牌包
             generatePacks();
-
-            // 生成真相牌
-            generateTruthCards();
 
             // 重置游戏状态
             hand = [];
@@ -2509,7 +2396,6 @@
             // 显示揭示阶段
             document.getElementById('build-overlay').classList.remove('hidden');
             document.getElementById('mark-overlay').classList.add('hidden');
-            document.getElementById('truth-overlay').style.display = 'none';
 
             // 隐藏游戏区域元素
             document.getElementById('table-row').style.display = 'none';
