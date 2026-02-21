@@ -1630,22 +1630,12 @@
             // 更新状态显示
             statusEl.textContent = '(' + revealedCount + '/5)';
 
-            // 渲染真相牌（盖牌状态或已揭示）
-            // 如果真相已揭示，显示所有条件；否则显示盖牌
-            if (truthRevealed) {
-                // 真相已揭示，显示条件信息
-                var conditionStr = truthConditionCards.map(c => c.suit + c.value).join(', ');
-                var infoDiv = document.createElement('div');
-                infoDiv.className = 'truth-info';
-                infoDiv.innerHTML = '<span class="truth-label">真相条件: </span><span class="truth-effect">' + conditionStr + '</span>';
-                container.appendChild(infoDiv);
-            } else {
-                // 显示文案
-                var infoDiv = document.createElement('div');
-                infoDiv.className = 'truth-info';
-                infoDiv.innerHTML = '<span class="truth-label">真相尚未揭示</span>';
-                container.appendChild(infoDiv);
-            }
+            // 始终显示真相条件牌信息
+            var conditionStr = truthConditionCards.map(c => c.suit + c.value).join(', ');
+            var infoDiv = document.createElement('div');
+            infoDiv.className = 'truth-info';
+            infoDiv.innerHTML = '<span class="truth-label">真相条件: </span><span class="truth-effect">' + conditionStr + '</span>';
+            container.appendChild(infoDiv);
         }
 
         // ==================== 标记阶段 ====================
