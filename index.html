@@ -1579,8 +1579,6 @@
                 div.innerHTML = `
                     <div class="pack-suits">${pack.suit}</div>
                     <div class="pack-info">
-                        <div>${pack.price}资金</div>
-                        <div>${pack.cardsPerPack}张</div>
                         <div>已揭示${revealedInSuit}/${totalInSuit}</div>
                         ${truthConditionTotal > 0 ? '<div style="color: #00ffff;">真相' + truthConditionRevealed + '/' + truthConditionTotal + '</div>' : ''}
                     </div>
@@ -2022,6 +2020,10 @@
                 const isSelected = selectedCards.some(c => c.id === card.id);
                 const div = createCardElement(card, () => toggleSelect(card));
                 if (isSelected) div.classList.add('selected');
+                // 检查是否是真相条件牌
+                if (truthConditionCards.some(tc => tc.id === card.id)) {
+                    div.classList.add('truth-condition-card');
+                }
                 contentDiv.appendChild(div);
             });
 
@@ -2081,6 +2083,10 @@
                 // 该轮的牌（打出时显示真实分数）
                 round.cards.forEach(card => {
                     const div = createCardElement(card, () => {}, true);
+                    // 检查是否是真相条件牌
+                    if (truthConditionCards.some(tc => tc.id === card.id)) {
+                        div.classList.add('truth-condition-card');
+                    }
                     roundContainer.appendChild(div);
                 });
 
@@ -2118,6 +2124,13 @@
         // 更新预览
         function updatePreview() {
             if (selectedCards.length === 0) {
+                showMessage('选择要打出的牌', 'info');
+                return;
+            }
+
+            // 检查是否有未揭示的牌
+            var hasUnrevealed = selectedCards.some(c => c.revealed !== true);
+            if (hasUnrevealed) {
                 showMessage('选择要打出的牌', 'info');
                 return;
             }
