@@ -57,26 +57,6 @@
             font-weight: bold;
         }
 
-        /* 真相牌在信息栏中的样式 */
-        #truth-card-display {
-            background: linear-gradient(145deg, #1a1a2a, #0a0a1a);
-            border: 3px solid #00ffff;
-            box-shadow: 0 0 20px rgba(0, 255, 255, 0.4);
-            color: #00ffff;
-        }
-
-        #truth-card-display .truth-label {
-            font-size: 12px;
-            color: #00aaaa;
-            display: block;
-        }
-
-        #truth-card-display .truth-effect {
-            font-weight: bold;
-            font-size: 14px;
-            color: #00ffff;
-        }
-
         .truth-info {
             background: linear-gradient(145deg, #2a2a2a, #1a1a1a);
             border: 3px solid #00ffff;
@@ -1120,11 +1100,6 @@
             <div id="revealed-cards-container" class="cards-row"></div>
         </div>
 
-        <!-- 真相条件牌 -->
-        <div class="build-section">
-            <h3>真相条件牌 <span id="truth-reveal-status"></span></h3>
-            <div id="truth-condition-container" class="cards-row"></div>
-        </div>
 
         <button class="btn-primary continue-btn" onclick="startGamePhase()">开始游戏</button>
     </div>
@@ -1161,10 +1136,6 @@
             <span class="suit-diamonds" title="方块">♦ <span id="count-diamonds">0</span></span>
             <span class="suit-clubs" title="梅花">♣ <span id="count-clubs">0</span></span>
             <span class="suit-spades" title="黑桃">♠ <span id="count-spades">0</span></span>
-        </div>
-        <!-- 真相牌显示区域（右上角） -->
-        <div class="info-item" id="truth-card-display" style="display: none;">
-            <span id="truth-card-text"></span>
         </div>
     </div>
 
@@ -1424,9 +1395,20 @@
 
             // 生成正分候选
             positiveCandidates = [];
+            // 每种花色最多一张10分
+            var tenValueAssigned = {};
+            suitOptions.forEach(s => tenValueAssigned[s] = false);
+
             for (var i = 0; i < posCount; i++) {
                 var suit = randomItem(suitOptions);
-                var value = randomInRange(1, 3);
+                // 如果该花色还没分配10分牌，且随机到10，则分配10分
+                var value;
+                if (!tenValueAssigned[suit] && Math.random() < 0.3) {
+                    value = 10;
+                    tenValueAssigned[suit] = true;
+                } else {
+                    value = 1;
+                }
                 positiveCandidates.push({
                     id: cardId++,
                     suit: suit,
@@ -1438,9 +1420,20 @@
 
             // 生成负分候选
             negativeCandidates = [];
+            // 每种花色最多一张-10分
+            var negTenValueAssigned = {};
+            suitOptions.forEach(s => negTenValueAssigned[s] = false);
+
             for (var i = 0; i < negCount; i++) {
                 var suit = randomItem(suitOptions);
-                var value = randomInRange(-3, -1);
+                // 如果该花色还没分配-10分牌，且随机到-10，则分配-10分
+                var value;
+                if (!negTenValueAssigned[suit] && Math.random() < 0.3) {
+                    value = -10;
+                    negTenValueAssigned[suit] = true;
+                } else {
+                    value = -1;
+                }
                 negativeCandidates.push({
                     id: cardId++,
                     suit: suit,
@@ -1544,8 +1537,6 @@
             // 渲染揭示的牌（正分+负分）
             renderRevealedCards();
 
-            // 渲染真相条件牌
-            renderTruthConditionCards();
         }
 
         function renderPacks() {
@@ -1576,6 +1567,13 @@
                 var allRevealed = revealedInSuit >= totalInSuit;
                 var canBuy = !allRevealed && gold >= pack.price;
 
+                // 统计该花色中的真相条件牌数量
+                // 统计该花色中已揭示的真相条件牌数量
+                var truthConditionTotal = truthConditionCards.filter(tc => tc.suit === pack.suit).length;
+                var truthConditionRevealed = truthConditionCards.filter(tc =>
+                    tc.suit === pack.suit && revealedPosCards.some(c => c.id === tc.id)
+                ).length;
+
                 var div = document.createElement('div');
                 div.className = 'pack-card' + (canBuy ? '' : ' disabled');
                 div.innerHTML = `
@@ -1584,6 +1582,7 @@
                         <div>${pack.price}资金</div>
                         <div>${pack.cardsPerPack}张</div>
                         <div>已揭示${revealedInSuit}/${totalInSuit}</div>
+                        ${truthConditionTotal > 0 ? '<div style="color: #00ffff;">真相' + truthConditionRevealed + '/' + truthConditionTotal + '</div>' : ''}
                     </div>
                 `;
                 if (canBuy) {
@@ -1631,11 +1630,10 @@
             statusEl.textContent = '(' + revealedCount + '/5)';
 
             // 始终显示真相条件牌信息
-            var conditionStr = truthConditionCards.map(c => c.suit + c.value).join(', ');
+            var conditionStr = truthConditionCards.map(c => c.suit).join(', ');
             var infoDiv = document.createElement('div');
             infoDiv.className = 'truth-info';
             infoDiv.innerHTML = '<span class="truth-label">真相条件: </span><span class="truth-effect">' + conditionStr + '</span>';
-            container.appendChild(infoDiv);
         }
 
         // ==================== 标记阶段 ====================
@@ -1794,15 +1792,6 @@
                 btns[2].style.display = ''; // 推荐出牌
             }
 
-            // 显示真相牌
-            var truthDisplay = document.getElementById('truth-card-display');
-            var truthText = document.getElementById('truth-card-text');
-            if (truthRevealed) {
-                truthDisplay.style.display = 'block';
-                var conditionStr = truthConditionCards.map(c => c.suit + c.value).join(', ');
-                truthText.innerHTML = '<span class="truth-label">真相条件</span><span class="truth-effect">' + conditionStr + '</span>';
-            }
-
             // 更新UI
             renderHand();
             renderTable();
@@ -1856,11 +1845,8 @@
 
             var multiplier = getMultiplier(maxCount);
 
-            // 应用真相牌效果
-            var truthMultiplier = 1;
+            // 真相条件牌加分（需要全部揭示才能生效）
             var truthBonus = 0;
-
-            // 真相条件牌加分（3张+50，4张+100，5张+200）
             if (truthRevealed) {
                 var conditionCardsInPlay = 0;
                 truthConditionCards.forEach(function(tc) {
@@ -1869,9 +1855,9 @@
                     }
                 });
                 if (conditionCardsInPlay >= 3) {
-                    if (conditionCardsInPlay === 3) truthBonus += 50;
-                    else if (conditionCardsInPlay === 4) truthBonus += 100;
-                    else if (conditionCardsInPlay === 5) truthBonus += 200;
+                    if (conditionCardsInPlay === 3) truthBonus = 50;
+                    else if (conditionCardsInPlay === 4) truthBonus = 100;
+                    else if (conditionCardsInPlay === 5) truthBonus = 200;
                 }
             }
 
@@ -1898,7 +1884,7 @@
                 });
             }
 
-            var totalScore = (baseScore + truthBonus) * multiplier * truthMultiplier;
+            var totalScore = (baseScore + truthBonus) * multiplier;
 
             // 构建各牌基础分列表
             var baseValues = cardsForDisplay.map(function(c) {
@@ -1908,28 +1894,20 @@
                 return c.value;
             }).join('+');
 
-            // 构建消息：考虑真相牌效果
+            // 真相加分显示
             var truthEffect = '';
             if (truthBonus > 0) {
-                // 有加分效果，用金色显示
                 truthEffect = '<span style="color: #ffd700;">+' + truthBonus + '</span>';
             }
 
             // 基础倍率
-            var baseMultiplier = multiplier;
-
-            // 消息格式：基础分×倍率[×真相牌倍率]=总分
-            var multiplierPart = '×' + baseMultiplier;
-            if (truthMultiplier > 1) {
-                // 真相牌翻倍效果用金色显示
-                multiplierPart += '<span style="color: #ffd700;">×' + truthMultiplier + '</span>';
-            }
+            var multiplierPart = '×' + multiplier;
 
             var message = '(' + baseValues + truthEffect + ')' + multiplierPart + '=' + totalScore;
 
             return {
                 score: totalScore,
-                multiplier: baseMultiplier,
+                multiplier: multiplier,
                 message: message
             };
         }
@@ -1996,16 +1974,16 @@
             if (card.isNew) className += ' animate';
             div.className = `card ${className}`;
 
-            // 花色显示
-            let displaySuit = isRevealed ? card.suit : '?';
-            // 分数始终显示
-            let displayValue = card.value;
+            // 花色始终显示
+            let displaySuit = card.suit;
+            // 未揭示的牌不显示分数
+            let displayValue = isRevealed ? card.value : '?';
             if (card.isNegative && card.markCount && card.markCount > 0) {
                 displayValue = Math.min(0, card.value + card.markCount);
             }
 
-            // 标记加分显示
-            const markBonus = card.markCount && card.markCount > 0 ? `+${card.markCount}` : '';
+            // 标记加分显示（仅已揭示的牌）
+            const markBonus = isRevealed && card.markCount && card.markCount > 0 ? `+${card.markCount}` : '';
 
             div.innerHTML = `
                 <div class="suit">${displaySuit}</div>
@@ -2044,13 +2022,6 @@
                 const isSelected = selectedCards.some(c => c.id === card.id);
                 const div = createCardElement(card, () => toggleSelect(card));
                 if (isSelected) div.classList.add('selected');
-                // 检查是否是真相条件牌
-                if (truthRevealed) {
-                    var isTruthCondition = truthConditionCards.some(tc => tc.id === card.id);
-                    if (isTruthCondition) {
-                        div.classList.add('truth-condition-card');
-                    }
-                }
                 contentDiv.appendChild(div);
             });
 
@@ -2110,13 +2081,6 @@
                 // 该轮的牌（打出时显示真实分数）
                 round.cards.forEach(card => {
                     const div = createCardElement(card, () => {}, true);
-                    // 检查是否是真相条件牌
-                    if (truthRevealed) {
-                        var isTruthCondition = truthConditionCards.some(tc => tc.id === card.id);
-                        if (isTruthCondition) {
-                            div.classList.add('truth-condition-card');
-                        }
-                    }
                     roundContainer.appendChild(div);
                 });
 
