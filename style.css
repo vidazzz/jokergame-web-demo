@@ -1,0 +1,1150 @@
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: row;
+            justify-content: center;
+            align-items: flex-start;
+            padding: 20px;
+            color: #fff;
+            gap: 40px;
+        }
+
+        h1 {
+            margin-bottom: 10px;
+            text-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
+            color: #ffd700;
+        }
+
+        /* 左侧主游戏区域 */
+        .main-content {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            flex: 1;
+        }
+
+        .info-bar {
+            display: flex;
+            gap: 30px;
+            margin-bottom: 20px;
+            font-size: 18px;
+        }
+
+        .info-item {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 10px 20px;
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+        }
+
+        .score-multiplier {
+            color: #4ade80;
+            font-weight: bold;
+        }
+
+        .truth-info {
+            background: linear-gradient(145deg, #2a2a2a, #1a1a1a);
+            border: 3px solid #00ffff;
+            border-radius: 10px;
+            padding: 15px 25px;
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.4);
+            color: #00ffff;
+            font-size: 16px;
+        }
+
+        .truth-info .truth-label {
+            color: #aaa;
+            margin-right: 8px;
+        }
+
+        /* 真相条件牌外框 */
+        .truth-condition-card {
+            border: 3px solid #00ffff !important;
+            box-shadow: 0 0 15px rgba(0, 255, 255, 0.5);
+        }
+
+        .suit-count {
+            display: flex;
+            gap: 15px;
+            font-size: 16px;
+        }
+
+        .suit-count span {
+            display: flex;
+            align-items: center;
+            gap: 3px;
+        }
+
+        .suit-hearts { color: #e74c3c; }
+        .suit-diamonds { color: #e74c3c; }
+        .suit-clubs { color: #1a1a1a; }
+        .suit-spades { color: #1a1a1a; }
+
+        /* 侧边栏规则区域 */
+        .sidebar {
+            width: 280px;
+            position: sticky;
+            top: 20px;
+        }
+
+        .rules {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 20px;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 215, 0, 0.2);
+        }
+
+        .rules h3 {
+            color: #ffd700;
+            margin-bottom: 15px;
+            font-size: 18px;
+            border-bottom: 1px solid rgba(255, 215, 0, 0.3);
+            padding-bottom: 10px;
+        }
+
+        .rules ul {
+            list-style: none;
+            color: #aaa;
+        }
+
+        .rules li {
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            font-size: 14px;
+            line-height: 1.4;
+        }
+
+        .rules li:last-child {
+            border-bottom: none;
+        }
+
+        .game-area {
+            display: flex;
+            flex-direction: column;
+            gap: 30px;
+            align-items: center;
+            width: 100%;
+            max-width: 900px;
+        }
+
+        .card-row {
+            display: flex;
+            gap: 15px;
+            min-height: 140px;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .row-label {
+            font-size: 14px;
+            color: #888;
+            margin-bottom: 5px;
+        }
+
+        .row-header {
+            width: 100%;
+            text-align: center;
+        }
+
+        /* 手牌行包含正常牌和负分牌 */
+        .hand-row-content {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        /* 负分牌分隔线 */
+        .negative-divider {
+            width: 2px;
+            height: 100px;
+            background: rgba(255, 215, 0, 0.3);
+            margin: 0 20px;
+        }
+
+        /* 负分牌容器 */
+        .negative-section {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .card {
+            width: 80px;
+            height: 120px;
+            border-radius: 10px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+            user-select: none;
+            flex-shrink: 0;
+            background: linear-gradient(145deg, #888, #666);
+        }
+
+        .card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        }
+
+        .card.red {
+            background: linear-gradient(145deg, #fff, #f5f5f5);
+            color: #e74c3c;
+            border: 2px solid #e74c3c;
+        }
+
+        .card.black {
+            background: linear-gradient(145deg, #fff, #f5f5f5);
+            color: #2c3e50;
+            border: 2px solid #2c3e50;
+        }
+
+        .card.selected {
+            transform: translateY(-20px);
+            box-shadow: 0 15px 40px rgba(255, 215, 0, 0.4);
+            border-color: #ffd700;
+        }
+
+        .card.negative {
+            background: linear-gradient(145deg, #4a4a4a, #3a3a3a);
+            color: #aaa;
+            border: 2px solid #666;
+        }
+
+        .card.negative .suit,
+        .card.negative .rank,
+        .card.negative .corner {
+            color: #ff6b6b;
+        }
+
+        .card.truth {
+            background: linear-gradient(145deg, #ffd700, #b8860b);
+            color: #333;
+            border: 2px solid #ff6600;
+        }
+
+        .card.truth .rank {
+            color: #8b0000;
+            font-weight: bold;
+        }
+
+        .card.truth.selected {
+            box-shadow: 0 15px 40px rgba(255, 215, 0, 0.6);
+            border-color: #ff4500;
+        }
+
+        .card.truth.deck {
+            cursor: pointer;
+        }
+
+        .card.truth.deck:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(255, 215, 0, 0.4);
+        }
+
+        .card.truth .back {
+            color: #8b0000;
+            font-weight: bold;
+        }
+
+        .card .rank {
+            font-size: 28px;
+        }
+
+        .card .suit {
+            font-size: 32px;
+        }
+
+        .card .corner {
+            position: absolute;
+            font-size: 14px;
+        }
+
+        .card .corner.top-left {
+            top: 5px;
+            left: 8px;
+        }
+
+        .card .corner.bottom-right {
+            bottom: 5px;
+            right: 8px;
+            transform: rotate(180deg);
+        }
+
+        /* 标记显示 */
+        .card .mark-count {
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            background: #00bfff;
+            color: #000;
+            font-size: 12px;
+            font-weight: bold;
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 2px 8px rgba(0, 191, 255, 0.5);
+        }
+
+        /* 标记加分显示 */
+        .card .mark-bonus {
+            color: #00bfff;
+            font-size: 14px;
+            font-weight: bold;
+            margin-left: 4px;
+        }
+
+        /* 评估分数显示 */
+        .card .eval-score {
+            display: block;
+            font-size: 12px;
+            font-weight: bold;
+            margin-top: 2px;
+        }
+
+        .card .eval-score.positive {
+            color: #4ade80;
+        }
+
+        .card .eval-score.negative {
+            color: #f87171;
+        }
+
+        .card .eval-score.weight {
+            color: #60a5fa;
+            font-size: 9px;
+            white-space: nowrap;
+            display: block;
+        }
+
+        .card .eval-score.weight + .eval-score {
+            margin-top: 2px;
+        }
+
+        .card.can-mark {
+            cursor: pointer;
+        }
+
+        .card.can-mark:hover {
+            box-shadow: 0 0 15px rgba(0, 191, 255, 0.5);
+        }
+
+        .deck {
+            background: linear-gradient(145deg, #c41e3a, #8b0000);
+            border: 3px solid #ffd700;
+        }
+
+        .deck .back {
+            font-size: 40px;
+            color: #ffd700;
+        }
+
+        /* 轮次标签 */
+        .round-label {
+            background: linear-gradient(145deg, #2a2a3a, #1a1a2a);
+            color: #ffd700;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-weight: bold;
+            display: inline-flex;
+            align-items: center;
+            margin-right: 10px;
+            flex-shrink: 0;
+        }
+
+        /* 每轮出牌的容器 - 强制每轮占满一行 */
+        .round-container {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 10px;
+            align-items: center;
+            flex-wrap: nowrap;
+            width: 100%;
+        }
+
+        .round-score {
+            color: #4ade80;
+            margin-left: 8px;
+            font-size: 14px;
+        }
+
+        .buttons {
+            display: flex;
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        button {
+            padding: 12px 30px;
+            font-size: 16px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: bold;
+        }
+
+        .btn-primary {
+            background: linear-gradient(145deg, #4ade80, #22c55e);
+            color: #000;
+        }
+
+        .btn-primary:hover {
+            background: linear-gradient(145deg, #22c55e, #16a34a);
+            transform: scale(1.05);
+        }
+
+        .btn-secondary {
+            background: linear-gradient(145deg, #f87171, #ef4444);
+            color: #fff;
+        }
+
+        .btn-secondary:hover {
+            background: linear-gradient(145deg, #ef4444, #dc2626);
+            transform: scale(1.05);
+        }
+
+        .btn-suggest {
+            background: linear-gradient(145deg, #60a5fa, #3b82f6);
+            color: #fff;
+        }
+
+        .btn-suggest:hover {
+            background: linear-gradient(145deg, #3b82f6, #2563eb);
+            transform: scale(1.05);
+        }
+
+        .message {
+            margin-top: 15px;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 16px;
+            min-height: 40px;
+            text-align: center;
+        }
+
+        .message.success {
+            background: rgba(74, 222, 128, 0.2);
+            color: #4ade80;
+        }
+
+        .message.info {
+            background: rgba(96, 165, 250, 0.2);
+            color: #60a5fa;
+        }
+
+        .message.warning {
+            background: rgba(251, 191, 36, 0.2);
+            color: #fbbf24;
+        }
+
+        @keyframes deal {
+            from {
+                opacity: 0;
+                transform: translateY(-50px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .card.animate {
+            animation: deal 0.3s ease-out;
+        }
+
+        /* 对齐阶段样式 */
+        .participant-probs {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .participant-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+            background: rgba(255, 255, 255, 0.05);
+            padding: 10px 15px;
+            border-radius: 10px;
+        }
+
+        .participant-title {
+            font-size: 12px;
+            color: #ffd700;
+            margin-bottom: 5px;
+        }
+
+        .participant-exp {
+            background: rgba(255, 215, 0, 0.2);
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 14px;
+            display: inline-block;
+        }
+
+        .player-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+            background: rgba(0, 255, 255, 0.1);
+            padding: 10px 15px;
+            border-radius: 10px;
+            margin-bottom: 10px;
+        }
+
+        .player-title {
+            font-size: 14px;
+            color: #00ffff;
+            margin-bottom: 5px;
+        }
+
+        .participant-exp.suit-hearts { color: #e74c3c; }
+        .participant-exp.suit-diamonds { color: #e74c3c; }
+        .participant-exp.suit-clubs { color: #fff; }
+        .participant-exp.suit-spades { color: #fff; }
+
+        /* 对齐阶段分区 */
+        .align-section {
+            margin-bottom: 25px;
+        }
+
+        .align-section h4 {
+            color: #aaa;
+            font-size: 14px;
+            margin-bottom: 10px;
+            padding-left: 5px;
+        }
+
+        .align-section .cards-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: flex-start;
+        }
+
+        /* 对齐阶段底部按钮 */
+        #align-buttons {
+            display: flex;
+            justify-content: center;
+            padding: 20px;
+            margin-top: auto;
+        }
+
+        #align-buttons .btn {
+            padding: 12px 40px;
+            font-size: 16px;
+        }
+
+        .vote-card-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            margin: 10px;
+        }
+
+        .vote-card-wrapper.voted {
+            opacity: 0.7;
+        }
+
+        /* 投票时投重要的卡片样式 */
+        .card.player-voted-important {
+            box-shadow: 0 0 15px #4ade80;
+            border: 2px solid #4ade80;
+        }
+
+        /* 玩家可以投票的牌 */
+        .card.can-vote {
+            cursor: pointer;
+        }
+
+        .card.can-vote:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 4px 12px rgba(255, 255, 255, 0.2);
+        }
+
+        /* 玩家不能投票的牌 */
+        .card.cannot-vote {
+            opacity: 0.7;
+            cursor: not-allowed;
+        }
+
+        .vote-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn-small {
+            padding: 5px 15px;
+            font-size: 14px;
+        }
+
+        .btn.disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* 真相牌抽取遮罩层 */
+        #truth-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        #truth-overlay.hidden {
+            display: none;
+        }
+
+        #truth-overlay h2 {
+            color: #ffd700;
+            margin-bottom: 30px;
+            font-size: 24px;
+        }
+
+        #truth-deck {
+            width: 100px;
+            height: 150px;
+            background: linear-gradient(145deg, #ffd700, #b8860b);
+            border: 3px solid #ff6600;
+            border-radius: 12px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 10px 40px rgba(255, 215, 0, 0.3);
+        }
+
+        #truth-deck:hover {
+            transform: scale(1.05);
+            box-shadow: 0 15px 50px rgba(255, 215, 0, 0.5);
+        }
+
+        #truth-deck .back {
+            font-size: 48px;
+            color: #8b0000;
+            font-weight: bold;
+        }
+
+        /* 真相牌列表容器 */
+        #truth-cards-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            justify-content: center;
+            max-width: 700px;
+            margin: 20px 0;
+        }
+
+        /* 盖牌状态的真相牌 */
+        .truth-card-back {
+            width: 80px;
+            height: 120px;
+            background: linear-gradient(145deg, #ffd700, #b8860b);
+            border: 3px solid #8b4513;
+            border-radius: 10px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 20px rgba(255, 215, 0, 0.3);
+        }
+
+        .truth-card-back:hover {
+            transform: scale(1.08);
+            box-shadow: 0 8px 30px rgba(255, 215, 0, 0.5);
+        }
+
+        .truth-card-back .mark {
+            font-size: 36px;
+            color: #8b0000;
+            font-weight: bold;
+        }
+
+        /* 已翻开的真相牌 */
+        .truth-card-revealed {
+            width: 100px;
+            height: 150px;
+            background: linear-gradient(145deg, #ffd700, #b8860b);
+            border: 3px solid #ff6600;
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 10px 40px rgba(255, 215, 0, 0.3);
+            padding: 10px;
+            text-align: center;
+        }
+
+        .truth-card-revealed:hover {
+            transform: scale(1.05);
+            box-shadow: 0 15px 50px rgba(255, 215, 0, 0.5);
+        }
+
+        .truth-card-revealed .desc {
+            color: #333;
+            font-size: 16px;
+            font-weight: bold;
+        }
+
+        .truth-card-revealed .type-label {
+            font-size: 11px;
+            color: #8b0000;
+            margin-top: 5px;
+        }
+
+        #truth-remaining {
+            margin-top: 20px;
+            color: #ffd700;
+            font-size: 16px;
+        }
+
+        #truth-result {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            margin-top: 30px;
+        }
+
+        #truth-result.show {
+            display: flex;
+        }
+
+        #truth-result .card {
+            width: 100px;
+            height: 150px;
+        }
+
+        #truth-result .effect-name {
+            margin-top: 20px;
+            color: #ffd700;
+            font-size: 20px;
+            font-weight: bold;
+        }
+
+        #truth-result .continue-btn {
+            margin-top: 30px;
+            padding: 15px 40px;
+            font-size: 18px;
+        }
+
+        /* 游戏页面通用样式 */
+        .game-page {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.95);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            z-index: 1000;
+            overflow-y: auto;
+            padding: 20px;
+        }
+
+        .game-page.hidden {
+            display: none;
+        }
+
+        .game-page h2 {
+            color: #ffd700;
+            margin-bottom: 10px;
+        }
+
+        .gold-display {
+            color: #ffd700;
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 20px;
+        }
+
+        .build-section {
+            width: 100%;
+            max-width: 900px;
+            margin-bottom: 20px;
+        }
+
+        .build-section h3 {
+            color: #aaa;
+            font-size: 16px;
+            margin-bottom: 10px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding-bottom: 5px;
+        }
+
+        .cards-row {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            min-height: 80px;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+        }
+
+        /* 牌包样式 */
+        .pack-card {
+            width: 100px;
+            height: 140px;
+            background: linear-gradient(145deg, #4a90d9, #2c5aa0);
+            border: 3px solid #1e3a6e;
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 20px rgba(74, 144, 217, 0.3);
+        }
+
+        .pack-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(74, 144, 217, 0.5);
+        }
+
+        .pack-card.disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .pack-suits {
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+
+        .pack-info {
+            color: #fff;
+            font-size: 14px;
+            text-align: center;
+        }
+
+        /* 真相牌盖牌样式 */
+        .truth-card-back-small {
+            width: 70px;
+            height: 100px;
+            background: linear-gradient(145deg, #ffd700, #b8860b);
+            border: 2px solid #8b4513;
+            border-radius: 8px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .truth-card-back-small:hover {
+            transform: scale(1.05);
+        }
+
+        .truth-card-back-small.locked {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .truth-card-back-small .mark {
+            font-size: 28px;
+            color: #8b0000;
+            font-weight: bold;
+        }
+
+        .truth-card-back-small.purchased {
+            border-color: #4ade80;
+            box-shadow: 0 0 15px rgba(74, 222, 128, 0.5);
+        }
+
+        /* 揭示负分牌 */
+        .revealed-neg-card .card-content {
+            background: linear-gradient(145deg, #4a4a4a, #3a3a3a);
+            color: #ff6b6b;
+        }
+
+        /* 已构建的牌 */
+        .built-card {
+            position: relative;
+        }
+
+        .built-card .sell-btn {
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            width: 20px;
+            height: 20px;
+            background: #ef4444;
+            border-radius: 50%;
+            color: #fff;
+            font-size: 12px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+
+        .built-card:hover .sell-btn {
+            opacity: 1;
+        }
+
+        /* 响应式布局 - 平板及以下 */
+        @media (max-width: 768px) {
+            body {
+                flex-direction: column;
+                padding: 15px;
+                gap: 20px;
+            }
+
+            .sidebar {
+                width: 100%;
+                position: static;
+                order: -1;
+            }
+
+            .rules {
+                padding: 15px;
+            }
+
+            .main-content {
+                width: 100%;
+            }
+
+            h1 {
+                font-size: 24px;
+                text-align: center;
+            }
+
+            .info-bar {
+                flex-wrap: wrap;
+                justify-content: center;
+                gap: 10px;
+                font-size: 14px;
+            }
+
+            .info-item {
+                padding: 8px 12px;
+                font-size: 14px;
+            }
+
+            .suit-count {
+                gap: 8px;
+                font-size: 14px;
+            }
+
+            .card {
+                width: 60px;
+                height: 90px;
+            }
+
+            .card .rank {
+                font-size: 20px;
+            }
+
+            .card .suit {
+                font-size: 24px;
+            }
+
+            .card .corner {
+                font-size: 10px;
+            }
+
+            .card-row {
+                padding: 15px;
+                gap: 10px;
+                min-height: 100px;
+            }
+
+            .negative-divider {
+                height: 60px;
+                margin: 0 10px;
+            }
+
+            .pack-card {
+                width: 70px;
+                height: 100px;
+            }
+
+            .pack-suits {
+                font-size: 20px;
+            }
+
+            .pack-info {
+                font-size: 11px;
+            }
+
+            .truth-card-back-small {
+                width: 55px;
+                height: 80px;
+            }
+
+            .truth-card-back-small .mark {
+                font-size: 20px;
+            }
+
+            .buttons {
+                flex-wrap: wrap;
+                justify-content: center;
+            }
+
+            button {
+                padding: 10px 20px;
+                font-size: 14px;
+            }
+
+            .round-label {
+                padding: 6px 10px;
+                font-size: 12px;
+            }
+
+            .round-container {
+                gap: 8px;
+            }
+
+            .game-area {
+                max-width: 100%;
+            }
+
+            .game-page {
+                padding: 15px;
+            }
+
+            .build-section {
+                max-width: 100%;
+            }
+
+            .cards-row {
+                gap: 8px;
+                padding: 8px;
+            }
+
+            .gold-display {
+                font-size: 20px;
+            }
+        }
+
+        /* 响应式布局 - 手机 */
+        @media (max-width: 480px) {
+            body {
+                padding: 10px;
+            }
+
+            h1 {
+                font-size: 20px;
+            }
+
+            .info-bar {
+                gap: 8px;
+            }
+
+            .info-item {
+                padding: 6px 10px;
+                font-size: 12px;
+            }
+
+            .card {
+                width: 50px;
+                height: 75px;
+            }
+
+            .card .rank {
+                font-size: 18px;
+            }
+
+            .card .suit {
+                font-size: 20px;
+            }
+
+            .card .corner {
+                font-size: 9px;
+            }
+
+            .card-row {
+                padding: 10px;
+                gap: 6px;
+            }
+
+            .pack-card {
+                width: 60px;
+                height: 85px;
+            }
+
+            .pack-suits {
+                font-size: 18px;
+            }
+
+            .pack-info {
+                font-size: 10px;
+            }
+
+            .truth-card-back-small {
+                width: 45px;
+                height: 65px;
+            }
+
+            .truth-card-back-small .mark {
+                font-size: 16px;
+            }
+
+            .row-label {
+                font-size: 12px;
+            }
+
+            button {
+                padding: 8px 16px;
+                font-size: 13px;
+            }
+
+            .message {
+                font-size: 14px;
+                padding: 8px 12px;
+            }
+
+            .rules li {
+                font-size: 12px;
+                padding: 6px 0;
+            }
+
+            .rules h3 {
+                font-size: 16px;
+            }
+        }
