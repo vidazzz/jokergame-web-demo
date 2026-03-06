@@ -1442,6 +1442,11 @@ async function resetGame() {
     gameOver = false;
     markedCards = [];
     suitProbabilities = {};
+    participants = [];
+    truthConditionCards = [];
+
+    // 恢复手牌行显示
+    document.getElementById('hand-row').style.display = '';
 
     // 切换到构建阶段页面
     switchPage('build');
@@ -1462,4 +1467,4 @@ document.addEventListener('keydown', (e) => {
 });
 
 // 初始化游戏
-resetGame();
+loadConfig().then(() => resetGame());
