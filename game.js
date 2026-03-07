@@ -894,20 +894,18 @@ function calculateScore(cards, updateState) {
         suitGroups[suits[i]] = cards.filter(function(c) { return c.suit === suits[i]; });
     }
 
-    // 找到最大同花色组
-    var maxCount = 0;
-    var maxSuit = null;
-    var maxGroup = [];
-
+    // 计算每个花色的倍率（2张以上才算同花），并相加
+    var totalMultiplier = 0;
     for (var i = 0; i < suits.length; i++) {
-        if (suitGroups[suits[i]].length > maxCount) {
-            maxCount = suitGroups[suits[i]].length;
-            maxSuit = suits[i];
-            maxGroup = suitGroups[suits[i]];
+        var count = suitGroups[suits[i]].length;
+        if (count >= 2) {
+            totalMultiplier += getMultiplier(count);
         }
     }
+    // 保证至少有1倍
+    if (totalMultiplier === 0) totalMultiplier = 1;
 
-    var multiplier = getMultiplier(maxCount);
+    var multiplier = totalMultiplier;
 
     // 真相条件牌加分（需要全部揭示才能生效）
     var truthBonus = 0;
